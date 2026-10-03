@@ -96,17 +96,13 @@
                 <label class="form-label small text-secondary">رمز عبور</label>
                 <input type="text" id="u_password" class="form-control" placeholder="رمز عبور" required>
               </div>
-              <div class="col-md-2">
-                <label class="form-label small text-secondary">اعتبار (روز)</label>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary">اعتبار (تعداد روز)</label>
                 <input type="number" id="u_days" class="form-control" placeholder="مثلاً: 30" min="1" required>
               </div>
-              <div class="col-md-2">
-                <label class="form-label small text-secondary">حجم (GB) - (0 = نامحدود)</label>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary">حجم مجاز (GB) - (0 = نامحدود)</label>
                 <input type="number" id="u_gb" class="form-control" step="0.1" placeholder="0 برای نامحدود" required>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label small text-secondary">تعداد کاربر (دستگاه)</label>
-                <input type="number" id="u_devices" class="form-control" min="1" value="1" placeholder="1" required>
               </div>
               <div class="col-12 text-end">
                 <button type="submit" class="btn btn-primary px-4 rounded-3" style="background-color: #8B5CF6; border: none;">
@@ -129,13 +125,12 @@
                   <th>تاریخ ساخت</th>
                   <th>اعتبار (روز)</th>
                   <th>حجم مصرفی / کل</th>
-                  <th>دستگاه‌های متصل</th>
                   <th>وضعیت</th>
                   <th>عملیات</th>
                 </tr>
               </thead>
               <tbody id="usersTableBody">
-                <tr><td colspan="8" class="text-center py-4 text-secondary">در حال دریافت داده‌ها...</td></tr>
+                <tr><td colspan="7" class="text-center py-4 text-secondary">در حال دریافت داده‌ها...</td></tr>
               </tbody>
             </table>
           </div>
@@ -227,7 +222,7 @@
         const data = await res.json();
         
         if (!data) {
-          tbody.innerHTML = '<tr><td colspan="8" class="text-center text-secondary py-4">هیچ کاربری یافت نشد.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary py-4">هیچ کاربری یافت نشد.</td></tr>';
           return;
         }
 
@@ -240,11 +235,6 @@
           const maxGb = user.max_volume_gb || 0;
           const usedBytes = user.used_bytes || 0;
           const usedGb = (usedBytes / (1024 * 1024 * 1024)).toFixed(2);
-          
-          // محاسبه تعداد دستگاه فعال
-          const maxDevices = user.max_devices || 1;
-          const activeDevicesObj = user.active_devices || {};
-          const activeDevicesCount = Object.keys(activeDevicesObj).length;
           
           let volumeDisplay = '';
           if (maxGb === 0) {
@@ -266,16 +256,6 @@
               <td>${user.max_days} روز</td>
               <td>${volumeDisplay}</td>
               <td>
-                <span class="badge ${activeDevicesCount >= maxDevices ? 'bg-warning text-dark' : 'bg-secondary'}">
-                  ${activeDevicesCount} از ${maxDevices} دستگاه
-                </span>
-                ${activeDevicesCount > 0 ? `
-                  <button class="btn btn-sm btn-link text-info p-0 ms-1" title="صفر کردن نشست‌های فعال" onclick="resetUserSessions('${id}')">
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                  </button>
-                ` : ''}
-              </td>
-              <td>
                 <span class="badge ${user.active ? 'bg-success' : 'bg-danger'}">
                   ${user.active ? 'فعال' : 'غیرفعال'}
                 </span>
@@ -293,7 +273,7 @@
         });
         tbody.innerHTML = html;
       } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">خطا در دریافت کاربران!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">خطا در دریافت کاربران!</td></tr>';
       }
     }
 
@@ -303,7 +283,6 @@
       const password = document.getElementById('u_password').value.trim();
       const maxDays = parseInt(document.getElementById('u_days').value) || 30;
       const maxGb = parseFloat(document.getElementById('u_gb').value) || 0;
-      const maxDevices = parseInt(document.getElementById('u_devices').value) || 1;
 
       const userId = 'user_' + Date.now();
       const userData = {
@@ -312,9 +291,7 @@
         active: true,
         max_days: maxDays,
         max_volume_gb: maxGb,
-        max_devices: maxDevices,
         used_bytes: 0,
-        active_devices: {},
         created_at: new Date().toISOString()
       };
 
@@ -325,17 +302,7 @@
       });
 
       document.getElementById('addUserForm').reset();
-      document.getElementById('u_devices').value = 1;
       fetchUsers();
-    }
-
-    async function resetUserSessions(id) {
-      if (confirm('آیا می‌خواهید تمامی دستگاه‌های فعال متصل به این حساب را ریست/خارج کنید؟')) {
-        await fetch(`${FIREBASE_URL}users/${id}/active_devices.json`, {
-          method: 'DELETE'
-        });
-        fetchUsers();
-      }
     }
 
     async function toggleUserStatus(id, newStatus) {
