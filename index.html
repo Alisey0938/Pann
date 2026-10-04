@@ -6,6 +6,9 @@
   <title>پنل مدیریت XRAY ULTRA</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <!-- کتابخانه تقویم شمسی -->
+  <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+  
   <style>
     body { background-color: #090B10; color: #E2E8F0; font-family: system-ui, -apple-system, sans-serif; }
     .card { background-color: #131722; border: 1px solid #1E293B; border-radius: 16px; color: #FFF; }
@@ -15,6 +18,7 @@
     .form-control:focus, .form-select:focus { background-color: #1E293B; color: #FFF; border-color: #8B5CF6; box-shadow: 0 0 0 0.25rem rgba(139, 92, 246, 0.25); }
     .table { color: #E2E8F0; }
     .badge-unlimited { background-color: #059669; }
+    .datepicker-plot-area { font-family: inherit; }
   </style>
 </head>
 <body class="p-3 p-md-5">
@@ -23,7 +27,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
       <div>
         <h2 class="fw-bold text-primary mb-1"><i class="bi bi-shield-lock-fill me-2"></i>پنل مدیریت XRAY ULTRA</h2>
-        <p class="text-secondary small mb-0">مدیریت کانفیگ‌ها، اکانت‌ها و بنر‌های اطلاع‌رسانی</p>
+        <p class="text-secondary small mb-0">مدیریت اکانت‌ها براساس تاریخ و ساعت ایران</p>
       </div>
       <button class="btn btn-outline-light rounded-pill px-3" onclick="loadAllData()">
         <i class="bi bi-arrow-clockwise me-1"></i> بروزرسانی داده‌ها
@@ -38,7 +42,7 @@
         <button class="nav-link" id="pills-configs-tab" data-bs-toggle="pill" data-bs-target="#pills-configs" type="button"><i class="bi bi-hdd-network-fill me-2"></i>مدیریت کانفیگ‌ها</button>
       </li>
       <li class="nav-item">
-        <button class="nav-link" id="pills-announcement-tab" data-bs-toggle="pill" data-bs-target="#pills-announcement" type="button"><i class="bi bi-megaphone-fill me-2"></i>مدیریت اعلان بالای برنامه</button>
+        <button class="nav-link" id="pills-announcement-tab" data-bs-toggle="pill" data-bs-target="#pills-announcement" type="button"><i class="bi bi-megaphone-fill me-2"></i>مدیریت اعلان‌ها</button>
       </li>
     </ul>
 
@@ -46,23 +50,50 @@
       <!-- تب کاربران -->
       <div class="tab-pane fade show active" id="pills-users">
         <div class="card p-4 mb-4">
-          <h5 class="card-title mb-3"><i class="bi bi-person-plus-fill me-2"></i>ایجاد کاربر جدید</h5>
+          <h5 class="card-title mb-3"><i class="bi bi-person-plus-fill me-2"></i>ایجاد کاربر جدید (مشابه سنایی)</h5>
           <form id="addUserForm" onsubmit="handleCreateUser(event)">
             <div class="row g-3">
-              <div class="col-md-3"><label class="form-label small text-secondary">نام کاربری</label><input type="text" id="u_username" class="form-control" required></div>
-              <div class="col-md-3"><label class="form-label small text-secondary">رمز عبور</label><input type="text" id="u_password" class="form-control" required></div>
-              <div class="col-md-3"><label class="form-label small text-secondary">اعتبار (روز)</label><input type="number" id="u_days" class="form-control" min="1" required></div>
-              <div class="col-md-3"><label class="form-label small text-secondary">حجم (GB) (0=نامحدود)</label><input type="number" id="u_gb" class="form-control" step="0.1" required></div>
-              <div class="col-12 text-end"><button type="submit" class="btn btn-primary px-4" style="background-color: #8B5CF6; border: none;">ساخت اکانت</button></div>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary">نام کاربری</label>
+                <input type="text" id="u_username" class="form-control" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary">رمز عبور</label>
+                <input type="text" id="u_password" class="form-control" required>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary">تاریخ و ساعت انقضا (شمسی)</label>
+                <input type="text" id="u_expire_date" class="form-control" placeholder="برای انتخاب کلیک کنید" required readonly>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small text-secondary">حجم (GB) (0 = نامحدود)</label>
+                <input type="number" id="u_gb" class="form-control" step="0.1" value="0" required>
+              </div>
+              <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary px-4" style="background-color: #8B5CF6; border: none;">ساخت اکانت</button>
+              </div>
             </div>
           </form>
         </div>
+
         <div class="card p-4">
           <h5 class="card-title mb-3"><i class="bi bi-people me-2"></i>لیست کاربران</h5>
           <div class="table-responsive">
             <table class="table align-middle">
-              <thead><tr class="text-secondary border-bottom"><th>نام کاربری</th><th>رمز عبور</th><th>تاریخ ساخت</th><th>اعتبار</th><th>حجم مصرفی</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-              <tbody id="usersTableBody"><tr><td colspan="7" class="text-center py-4 text-secondary">در حال دریافت...</td></tr></tbody>
+              <thead>
+                <tr class="text-secondary border-bottom">
+                  <th>نام کاربری</th>
+                  <th>رمز عبور</th>
+                  <th>تاریخ ساخت</th>
+                  <th>زمان انقضا</th>
+                  <th>حجم مصرفی</th>
+                  <th>وضعیت</th>
+                  <th>عملیات</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="7" class="text-center py-4 text-secondary">در حال دریافت...</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -92,10 +123,10 @@
         </div>
       </div>
 
-      <!-- تب جدید: مدیریت بنر اعلان -->
+      <!-- تب اعلان‌ها -->
       <div class="tab-pane fade" id="pills-announcement">
         <div class="card p-4">
-          <h5 class="card-title mb-3"><i class="bi bi-megaphone me-2"></i>تنظیمات بنر اطلاع‌رسانی بالای برنامه</h5>
+          <h5 class="card-title mb-3"><i class="bi bi-megaphone me-2"></i>تنظیمات بنر اطلاع‌رسانی</h5>
           <form id="announcementForm" onsubmit="handleSaveAnnouncement(event)">
             <div class="form-check form-switch mb-3">
               <input class="form-check-input" type="checkbox" id="a_enabled">
@@ -103,29 +134,47 @@
             </div>
             <div class="mb-3">
               <label class="form-label small text-secondary">متن اعلان</label>
-              <textarea id="a_text" class="form-control" rows="2" placeholder="متن پیام شما برای کاربران..."></textarea>
+              <textarea id="a_text" class="form-control" rows="2"></textarea>
             </div>
             <div class="mb-3">
-              <label class="form-label small text-secondary">آدرس تصویر بنر (اختیاری - لینک مستقیم عکس)</label>
-              <input type="url" id="a_image_url" class="form-control" placeholder="https://example.com/banner.png">
+              <label class="form-label small text-secondary">آدرس تصویر بنر</label>
+              <input type="url" id="a_image_url" class="form-control">
             </div>
             <div class="mb-3">
-              <label class="form-label small text-secondary">لینک بازشونده هنگام کلیک روی بنر (اختیاری - آدرس وبسایت یا تلگرام)</label>
-              <input type="url" id="a_target_url" class="form-control" placeholder="https://t.me/your_channel">
+              <label class="form-label small text-secondary">لینک کلیک</label>
+              <input type="url" id="a_target_url" class="form-control">
             </div>
-            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-1"></i>ذخیره بنر اعلان</button>
+            <button type="submit" class="btn btn-primary px-4">ذخیره بنر</button>
           </form>
         </div>
       </div>
-
     </div>
   </div>
 
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- اسکریپت‌های تقویم شمسی -->
+  <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
+  <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+
   <script>
     const FIREBASE_URL = "https://pane-dcc9a-default-rtdb.firebaseio.com/";
+    let selectedExpireTimestamp = null;
 
-    document.addEventListener("DOMContentLoaded", () => {
+    $(document).ready(function() {
+      // راه اندازی تقویم شمسی همراه با انتخاب ساعت و دقیقه
+      $("#u_expire_date").pDatepicker({
+        format: 'YYYY/MM/DD HH:mm',
+        timePicker: {
+          enabled: true,
+          meridiem: { enabled: false }
+        },
+        autoClose: true,
+        onSelect: function(unix) {
+          selectedExpireTimestamp = unix;
+        }
+      });
+
       loadAllData();
     });
 
@@ -135,38 +184,6 @@
       fetchAnnouncement();
     }
 
-    // --- مدیریت اعلان‌ها ---
-    async function fetchAnnouncement() {
-      try {
-        const res = await fetch(`${FIREBASE_URL}announcement.json`);
-        const data = await res.json();
-        if (data) {
-          document.getElementById('a_enabled').checked = data.enabled || false;
-          document.getElementById('a_text').value = data.text || '';
-          document.getElementById('a_image_url').value = data.image_url || '';
-          document.getElementById('a_target_url').value = data.target_url || '';
-        }
-      } catch (_) {}
-    }
-
-    async function handleSaveAnnouncement(e) {
-      e.preventDefault();
-      const announcementData = {
-        enabled: document.getElementById('a_enabled').checked,
-        text: document.getElementById('a_text').value.trim(),
-        image_url: document.getElementById('a_image_url').value.trim(),
-        target_url: document.getElementById('a_target_url').value.trim()
-      };
-
-      await fetch(`${FIREBASE_URL}announcement.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(announcementData)
-      });
-      alert('بنر با موفقیت بروزرسانی شد.');
-    }
-
-    // --- مدیریت کاربران ---
     async function fetchUsers() {
       const tbody = document.getElementById('usersTableBody');
       try {
@@ -176,16 +193,22 @@
         let html = '';
         Object.keys(data).forEach(id => {
           const user = data[id];
-          const createdAt = new Date(user.created_at).toLocaleDateString('fa-IR');
+          const createdShamsi = new persianDate(new Date(user.created_at)).format('YYYY/MM/DD HH:mm');
+          const expireShamsi = user.expire_at ? new persianDate(new Date(user.expire_at)).format('YYYY/MM/DD HH:mm') : 'نامشخص';
+          
           const maxGb = user.max_volume_gb || 0;
           const usedBytes = user.used_bytes || 0;
           const usedGb = (usedBytes / (1024 * 1024 * 1024)).toFixed(2);
           let volumeDisplay = maxGb === 0 
             ? `<span class="badge badge-unlimited">نامحدود (${usedGb} GB)</span>`
             : `<div><small>${usedGb} / ${maxGb} GB</small></div>`;
+
           html += `<tr class="border-bottom border-secondary">
-            <td class="fw-bold">${user.username}</td><td><code>${user.password}</code></td><td><small>${createdAt}</small></td>
-            <td>${user.max_days} روز</td><td>${volumeDisplay}</td>
+            <td class="fw-bold">${user.username}</td>
+            <td><code>${user.password}</code></td>
+            <td><small>${createdShamsi}</small></td>
+            <td><small class="text-warning">${expireShamsi}</small></td>
+            <td>${volumeDisplay}</td>
             <td><span class="badge ${user.active ? 'bg-success' : 'bg-danger'}">${user.active ? 'فعال' : 'غیرفعال'}</span></td>
             <td>
               <button class="btn btn-sm btn-outline-warning me-1" onclick="toggleUserStatus('${id}', ${!user.active})"><i class="bi bi-power"></i></button>
@@ -199,18 +222,25 @@
 
     async function handleCreateUser(e) {
       e.preventDefault();
+      if (!selectedExpireTimestamp) {
+        alert('لطفاً تاریخ انقضا را انتخاب کنید.');
+        return;
+      }
+
       const userId = 'user_' + Date.now();
       const userData = {
         username: document.getElementById('u_username').value.trim(),
         password: document.getElementById('u_password').value.trim(),
         active: true,
-        max_days: parseInt(document.getElementById('u_days').value) || 30,
+        expire_at: new Date(selectedExpireTimestamp).toISOString(),
         max_volume_gb: parseFloat(document.getElementById('u_gb').value) || 0,
         used_bytes: 0,
         created_at: new Date().toISOString()
       };
+
       await fetch(`${FIREBASE_URL}users/${userId}.json`, { method: 'PUT', body: JSON.stringify(userData) });
       document.getElementById('addUserForm').reset();
+      selectedExpireTimestamp = null;
       fetchUsers();
     }
 
@@ -226,7 +256,7 @@
       }
     }
 
-    // --- مدیریت کانفیگ‌ها ---
+    // --- مدیریت کانفیگ‌ها و اعلان‌ها ---
     async function fetchConfigs() {
       const tbody = document.getElementById('configsTableBody');
       try {
@@ -276,6 +306,31 @@
         await fetch(`${FIREBASE_URL}configs/${id}.json`, { method: 'DELETE' });
         fetchConfigs();
       }
+    }
+
+    async function fetchAnnouncement() {
+      try {
+        const res = await fetch(`${FIREBASE_URL}announcement.json`);
+        const data = await res.json();
+        if (data) {
+          document.getElementById('a_enabled').checked = data.enabled || false;
+          document.getElementById('a_text').value = data.text || '';
+          document.getElementById('a_image_url').value = data.image_url || '';
+          document.getElementById('a_target_url').value = data.target_url || '';
+        }
+      } catch (_) {}
+    }
+
+    async function handleSaveAnnouncement(e) {
+      e.preventDefault();
+      const announcementData = {
+        enabled: document.getElementById('a_enabled').checked,
+        text: document.getElementById('a_text').value.trim(),
+        image_url: document.getElementById('a_image_url').value.trim(),
+        target_url: document.getElementById('a_target_url').value.trim()
+      };
+      await fetch(`${FIREBASE_URL}announcement.json`, { method: 'PUT', body: JSON.stringify(announcementData) });
+      alert('بنر با موفقیت ذخیره شد.');
     }
   </script>
 </body>
