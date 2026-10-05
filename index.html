@@ -125,36 +125,51 @@
         </div>
       </div>
 
-      <!-- تب سابسکریپشن خودکار -->
+      <!-- تب سابسکریپشن خودکار (چند لینکی) -->
       <div class="tab-pane fade" id="pills-sub">
         <div class="card p-4 mb-4">
-          <h5 class="card-title mb-3"><i class="bi bi-link-45deg me-2"></i>تنظیمات لینک سابسکریپشن و همگام‌سازی</h5>
-          <form id="subForm" onsubmit="handleSaveSubSettings(event)">
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" id="s_enabled">
-              <label class="form-check-label text-white" for="s_enabled">فعال‌سازی دریافت خودکار از لینک سابسکریپشن</label>
-            </div>
+          <h5 class="card-title mb-3"><i class="bi bi-plus-link me-2"></i>افزودن لینک سابسکریپشن جدید</h5>
+          <form id="addSubForm" onsubmit="handleAddSubscription(event)">
             <div class="row g-3">
-              <div class="col-md-8">
-                <label class="form-label small text-secondary">لینک سابسکریپشن (Subscription URL)</label>
-                <input type="url" id="s_url" class="form-control" placeholder="https://example.com/sub/..." required>
-              </div>
               <div class="col-md-4">
-                <label class="form-label small text-secondary">زمان بروزرسانی خودکار (دقیقه)</label>
-                <input type="number" id="s_interval" class="form-control" value="2" min="1" required>
+                <label class="form-label small text-secondary">عنوان لینک</label>
+                <input type="text" id="sub_title" class="form-control" placeholder="مثلاً: سرورهای آلمان" required>
               </div>
-              <div class="col-12 d-flex justify-content-between align-items-center mt-4">
-                <div>
-                  <span id="subSyncStatus" class="badge bg-secondary">وضعیت همگام‌سازی: در انتظار...</span>
-                  <small id="lastSyncTime" class="text-secondary ms-2"></small>
-                </div>
-                <div>
-                  <button type="button" class="btn btn-outline-info me-2" onclick="syncSubscriptionNow()"><i class="bi bi-arrow-repeat me-1"></i>بروزرسانی دستی همین حالا</button>
-                  <button type="submit" class="btn btn-primary px-4">ذخیره تنظیمات</button>
-                </div>
+              <div class="col-md-8">
+                <label class="form-label small text-secondary">لینک سابسکریپشن (URL)</label>
+                <input type="url" id="sub_url" class="form-control" placeholder="https://example.com/sub/..." required>
+              </div>
+              <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary px-4">افزودن لینک ساب</button>
               </div>
             </div>
           </form>
+        </div>
+
+        <div class="card p-4 mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="card-title mb-0"><i class="bi bi-link-45deg me-2"></i>لیست لینک‌های سابسکریپشن</h5>
+            <div>
+              <span id="subSyncStatus" class="badge bg-secondary me-2">وضعیت: آماده</span>
+              <button type="button" class="btn btn-sm btn-outline-info" onclick="syncAllSubscriptionsNow()"><i class="bi bi-arrow-repeat me-1"></i>همگام‌سازی همه لینک‌ها</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr class="text-secondary border-bottom">
+                  <th>عنوان</th>
+                  <th>آدرس لینک</th>
+                  <th>تعداد کانفیگ دریافت شده</th>
+                  <th>آخرین بروزرسانی</th>
+                  <th>عملیات</th>
+                </tr>
+              </thead>
+              <tbody id="subListTableBody">
+                <tr><td colspan="5" class="text-center py-4 text-secondary">در حال دریافت...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -193,6 +208,7 @@
 
   <script>
     const FIREBASE_URL = "https://pane-dcc9a-default-rtdb.firebaseio.com/";
+    const WORKER_PROXY_URL = "https://calm-snow-8cb3.alisey597.workers.dev/?url=";
     let selectedExpireTimestamp = null;
     let cronIntervalId = null;
 
@@ -211,7 +227,7 @@
       fetchUsers();
       fetchConfigs();
       fetchAnnouncement();
-      fetchSubSettings();
+      fetchSubscriptions();
     }
 
     // --- مدیریت کاربران ---
@@ -338,34 +354,29 @@
       }
     }
 
-    // --- مدیریت سابسکریپشن و کرون‌‌جاب ---
-    async function fetchSubSettings() {
-      try {
-        const res = await fetch(`${FIREBASE_URL}subscription_settings.json`);
-        const data = await res.json();
-        if (data) {
-          document.getElementById('s_enabled').checked = data.enabled || false;
-          document.getElementById('s_url').value = data.url || '';
-          document.getElementById('s_interval').value = data.interval_minutes || 2;
-          if (data.last_sync) {
-            document.getElementById('lastSyncTime').innerText = 'آخرین بروزرسانی: ' + new persianDate(new Date(data.last_sync)).format('YYYY/MM/DD HH:mm:ss');
-          }
-        }
-      } catch (_) {}
-    }
+    // --- تشخیص و فیلتر خودکار کانفیگ‌های غیرمعتبر یا اطلاع‌رسانی (حجم/انقضا/اطلاعات) ---
+    function isDummyInfoConfig(configUrl, remarkName) {
+      const lowerConfig = configUrl.toLowerCase();
+      const lowerRemark = remarkName.toLowerCase();
 
-    async function handleSaveSubSettings(e) {
-      e.preventDefault();
-      const settings = {
-        enabled: document.getElementById('s_enabled').checked,
-        url: document.getElementById('s_url').value.trim(),
-        interval_minutes: parseInt(document.getElementById('s_interval').value) || 2,
-        last_sync: new Date().toISOString()
-      };
-      await fetch(`${FIREBASE_URL}subscription_settings.json`, { method: 'PUT', body: JSON.stringify(settings) });
-      alert('تنظیمات سابسکریپشن ذخیره شد.');
-      initCronJob();
-      if (settings.enabled) syncSubscriptionNow();
+      // آی‌پلاگ‌ها یا دامنه لوکال
+      if (lowerConfig.includes('127.0.0.1') || lowerConfig.includes('0.0.0.0') || lowerConfig.includes('localhost')) {
+        return true;
+      }
+
+      // کلمات کلیدی مربوط به اطلاعات حجم، تاریخ انقضا و نام کاربری اکانت
+      const infoKeywords = [
+        'volume', 'traffic', 'remaining', 'expire', 'gb', 'mb', 'day', 'days',
+        'حجم', 'انقضا', 'باقیمانده', 'روز', 'گیگ', 'اعتبار', 'اکانت'
+      ];
+
+      for (const key of infoKeywords) {
+        if (lowerRemark.includes(key)) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     function parseConfigRemark(rawConfig) {
@@ -383,73 +394,131 @@
       return 'Xray Server';
     }
 
-    // دریافت اطلاعات سابسکریپشن از طریق Cloudflare Worker اختصاصی
-    async function fetchWithCorsFallback(targetUrl) {
-      const myWorkerUrl = "https://calm-snow-8cb3.alisey597.workers.dev/?url="; 
-
+    // --- مدیریت لینک‌های سابسکریپشن متعدد ---
+    async function fetchSubscriptions() {
+      const tbody = document.getElementById('subListTableBody');
       try {
-        const response = await fetch(myWorkerUrl + encodeURIComponent(targetUrl));
+        const res = await fetch(`${FIREBASE_URL}subscriptions.json`);
+        const data = await res.json();
+        if (!data) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-secondary py-4">هیچ لینک سابسکریپشنی ثبت نشده است.</td></tr>';
+          return;
+        }
+        let html = '';
+        Object.keys(data).forEach(subId => {
+          const sub = data[subId];
+          const lastSync = sub.last_sync ? new persianDate(new Date(sub.last_sync)).format('YYYY/MM/DD HH:mm:ss') : 'هنوز انجام نشده';
+          const count = sub.config_count || 0;
+
+          html += `<tr class="border-bottom border-secondary">
+            <td class="fw-bold">${sub.title}</td>
+            <td><small class="text-secondary text-break">${sub.url}</small></td>
+            <td><span class="badge bg-info text-dark">${count} کانفیگ</span></td>
+            <td><small class="text-warning">${lastSync}</small></td>
+            <td>
+              <button class="btn btn-sm btn-outline-info me-1" onclick="syncSingleSubscription('${subId}')"><i class="bi bi-arrow-repeat"></i></button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteSubscription('${subId}')"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>`;
+        });
+        tbody.innerHTML = html;
+      } catch (err) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">خطا در دریافت لیست سابسکریپشن‌ها!</td></tr>'; }
+    }
+
+    async function handleAddSubscription(e) {
+      e.preventDefault();
+      const subId = 'sub_' + Date.now();
+      const subData = {
+        id: subId,
+        title: document.getElementById('sub_title').value.trim(),
+        url: document.getElementById('sub_url').value.trim(),
+        last_sync: null,
+        config_count: 0
+      };
+
+      await fetch(`${FIREBASE_URL}subscriptions/${subId}.json`, { method: 'PUT', body: JSON.stringify(subData) });
+      document.getElementById('addSubForm').reset();
+      fetchSubscriptions();
+      syncSingleSubscription(subId);
+    }
+
+    // حذف لینک ساب و تمام کانفیگ‌های مرتبط با آن از دیتابیس
+    async function deleteSubscription(subId) {
+      if (!confirm('آیا مطمئن هستید؟ با حذف این لینک سابسکریپشن، تمام کانفیگ‌های مربوط به آن از اپلیکیشن نیز پاک خواهند شد.')) return;
+
+      // 1. حذف لینک ساب
+      await fetch(`${FIREBASE_URL}subscriptions/${subId}.json`, { method: 'DELETE' });
+
+      // 2. حذف کانفیگ‌های متصل به این subId
+      const res = await fetch(`${FIREBASE_URL}configs.json`);
+      const configs = await res.json();
+      if (configs) {
+        for (const configId in configs) {
+          if (configs[configId] && configs[configId].sub_id === subId) {
+            await fetch(`${FIREBASE_URL}configs/${configId}.json`, { method: 'DELETE' });
+          }
+        }
+      }
+
+      fetchSubscriptions();
+      fetchConfigs();
+    }
+
+    async function fetchWithCorsFallback(targetUrl) {
+      try {
+        const response = await fetch(WORKER_PROXY_URL + encodeURIComponent(targetUrl));
         if (!response.ok) throw new Error('پاسخ نامعتبر از ورکر');
         const text = await response.text();
         if (text.startsWith("Error:")) throw new Error(text);
         return text;
       } catch (e) {
-        throw new Error("خطا در دریافت سابسکریپشن: " + e.message);
+        throw new Error("خطا در دریافت: " + e.message);
       }
     }
 
-    async function syncSubscriptionNow() {
+    // همگام‌سازی یک لینک سابسکریپشن مشخص
+    async function syncSingleSubscription(subId) {
       const statusBadge = document.getElementById('subSyncStatus');
       statusBadge.className = 'badge bg-warning text-dark';
-      statusBadge.innerText = 'در حال دریافت و بروزرسانی کانفیگ‌ها...';
+      statusBadge.innerText = 'در حال همگام‌سازی...';
 
       try {
-        const res = await fetch(`${FIREBASE_URL}subscription_settings.json`);
-        const settings = await res.json();
+        const subRes = await fetch(`${FIREBASE_URL}subscriptions/${subId}.json`);
+        const sub = await subRes.json();
+        if (!sub) return;
 
-        if (!settings || !settings.enabled || !settings.url) {
-          statusBadge.className = 'badge bg-secondary';
-          statusBadge.innerText = 'سابسکریپشن غیرفعال یا لینک ثبت نشده است.';
-          return;
-        }
-
-        // دریافت محتوا از طریق Worker کلودفلر
-        let rawText = await fetchWithCorsFallback(settings.url);
+        let rawText = await fetchWithCorsFallback(sub.url);
         rawText = rawText.trim();
 
-        // رمزگشایی Base64 در صورت وجود
         let decodedContent = rawText;
-        try {
-          decodedContent = atob(rawText);
-        } catch (_) {}
+        try { decodedContent = atob(rawText); } catch (_) {}
 
-        const configLines = decodedContent.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && (l.startsWith('vless://') || l.startsWith('vmess://') || l.startsWith('trojan://') || l.startsWith('ss://') || l.startsWith('shadowsocks://')));
+        const lines = decodedContent.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && (l.startsWith('vless://') || l.startsWith('vmess://') || l.startsWith('trojan://') || l.startsWith('ss://') || l.startsWith('shadowsocks://')));
 
-        if (configLines.length === 0) {
-          statusBadge.className = 'badge bg-danger';
-          statusBadge.innerText = 'هیچ کانفیگ معتبری در لینک پیدا نشد.';
-          return;
-        }
-
-        // دریافت کانفیگ‌های موجود
+        // 1. پاک کردن کانفیگ‌های قبلی این ساب
         const currentRes = await fetch(`${FIREBASE_URL}configs.json`);
         const currentData = (await currentRes.json()) || {};
-
-        // حذف کانفیگ‌های سابسکریپشن قبلی
         for (const key in currentData) {
-          if (currentData[key] && currentData[key].source === 'subscription') {
+          if (currentData[key] && currentData[key].sub_id === subId) {
             await fetch(`${FIREBASE_URL}configs/${key}.json`, { method: 'DELETE' });
           }
         }
 
-        // افزودن کانفیگ‌های جدید
-        for (let i = 0; i < configLines.length; i++) {
-          const configUrl = configLines[i];
+        // 2. افزودن کانفیگ‌های جدید (به جز کانفیگ‌های اطلاع‌رسانی/حجم/انقضا)
+        let addedCount = 0;
+        for (let i = 0; i < lines.length; i++) {
+          const configUrl = lines[i];
           const remarkName = parseConfigRemark(configUrl);
-          const configId = 'sub_config_' + Date.now() + '_' + i;
 
+          // فیلتر خودکار کانفیگ‌های نامعتبر یا اطلاع‌رسانی
+          if (isDummyInfoConfig(configUrl, remarkName)) {
+            continue; 
+          }
+
+          const configId = 'sub_cfg_' + Date.now() + '_' + i;
           const configData = {
             id: configId,
+            sub_id: subId,
             name: remarkName,
             flag: '🌐',
             config: configUrl,
@@ -458,33 +527,42 @@
           };
 
           await fetch(`${FIREBASE_URL}configs/${configId}.json`, { method: 'PUT', body: JSON.stringify(configData) });
+          addedCount++;
         }
 
+        // 3. بروزرسانی اطلاعات سابسکریپشن
         const nowIso = new Date().toISOString();
-        await fetch(`${FIREBASE_URL}subscription_settings/last_sync.json`, { method: 'PUT', body: JSON.stringify(nowIso) });
+        await fetch(`${FIREBASE_URL}subscriptions/${subId}/last_sync.json`, { method: 'PUT', body: JSON.stringify(nowIso) });
+        await fetch(`${FIREBASE_URL}subscriptions/${subId}/config_count.json`, { method: 'PUT', body: JSON.stringify(addedCount) });
 
         statusBadge.className = 'badge bg-success';
-        statusBadge.innerText = `همگام‌سازی موفق (${configLines.length} کانفیگ دریافت شد)`;
-        document.getElementById('lastSyncTime').innerText = 'آخرین بروزرسانی: ' + new persianDate(new Date(nowIso)).format('YYYY/MM/DD HH:mm:ss');
+        statusBadge.innerText = 'همگام‌سازی موفق';
+        fetchSubscriptions();
         fetchConfigs();
 
       } catch (err) {
         statusBadge.className = 'badge bg-danger';
-        statusBadge.innerText = err.message;
+        statusBadge.innerText = 'خطا در بروزرسانی!';
+      }
+    }
+
+    // همگام‌سازی تمامی لینک‌های ساب به‌‌صورت همزمان
+    async function syncAllSubscriptionsNow() {
+      const res = await fetch(`${FIREBASE_URL}subscriptions.json`);
+      const data = await res.json();
+      if (data) {
+        for (const subId in data) {
+          await syncSingleSubscription(subId);
+        }
       }
     }
 
     function initCronJob() {
       if (cronIntervalId) clearInterval(cronIntervalId);
-
-      fetch(`${FIREBASE_URL}subscription_settings.json`).then(res => res.json()).then(data => {
-        if (data && data.enabled) {
-          const intervalMs = (data.interval_minutes || 2) * 60 * 1000;
-          cronIntervalId = setInterval(() => {
-            syncSubscriptionNow();
-          }, intervalMs);
-        }
-      });
+      // بروزرسانی خودکار تمامی سابسکریپشن‌ها هر ۱۰ دقیقه یکبار
+      cronIntervalId = setInterval(() => {
+        syncAllSubscriptionsNow();
+      }, 10 * 60 * 1000);
     }
 
     // --- مدیریت اعلان‌ها ---
