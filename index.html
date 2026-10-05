@@ -6,7 +6,6 @@
   <title>پنل مدیریت XRAY ULTRA</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-  <!-- کتابخانه تقویم شمسی -->
   <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
   
   <style>
@@ -27,7 +26,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
       <div>
         <h2 class="fw-bold text-primary mb-1"><i class="bi bi-shield-lock-fill me-2"></i>پنل مدیریت XRAY ULTRA</h2>
-        <p class="text-secondary small mb-0">مدیریت اکانت‌ها براساس تاریخ و ساعت ایران</p>
+        <p class="text-secondary small mb-0">مدیریت کاربران، کانفیگ‌ها و لینک‌های سابسکریپشن</p>
       </div>
       <button class="btn btn-outline-light rounded-pill px-3" onclick="loadAllData()">
         <i class="bi bi-arrow-clockwise me-1"></i> بروزرسانی داده‌ها
@@ -42,6 +41,9 @@
         <button class="nav-link" id="pills-configs-tab" data-bs-toggle="pill" data-bs-target="#pills-configs" type="button"><i class="bi bi-hdd-network-fill me-2"></i>مدیریت کانفیگ‌ها</button>
       </li>
       <li class="nav-item">
+        <button class="nav-link" id="pills-sub-tab" data-bs-toggle="pill" data-bs-target="#pills-sub" type="button"><i class="bi bi-rss-fill me-2"></i>سابسکریپشن خودکار</button>
+      </li>
+      <li class="nav-item">
         <button class="nav-link" id="pills-announcement-tab" data-bs-toggle="pill" data-bs-target="#pills-announcement" type="button"><i class="bi bi-megaphone-fill me-2"></i>مدیریت اعلان‌ها</button>
       </li>
     </ul>
@@ -50,7 +52,7 @@
       <!-- تب کاربران -->
       <div class="tab-pane fade show active" id="pills-users">
         <div class="card p-4 mb-4">
-          <h5 class="card-title mb-3"><i class="bi bi-person-plus-fill me-2"></i>ایجاد کاربر جدید (مشابه سنایی)</h5>
+          <h5 class="card-title mb-3"><i class="bi bi-person-plus-fill me-2"></i>ایجاد کاربر جدید</h5>
           <form id="addUserForm" onsubmit="handleCreateUser(event)">
             <div class="row g-3">
               <div class="col-md-3">
@@ -102,7 +104,7 @@
       <!-- تب کانفیگ‌ها -->
       <div class="tab-pane fade" id="pills-configs">
         <div class="card p-4 mb-4">
-          <h5 class="card-title mb-3"><i class="bi bi-plus-circle-fill me-2"></i>افزودن کانفیگ</h5>
+          <h5 class="card-title mb-3"><i class="bi bi-plus-circle-fill me-2"></i>افزودن کانفیگ دستی</h5>
           <form id="addConfigForm" onsubmit="handleCreateConfig(event)">
             <div class="row g-3">
               <div class="col-md-4"><label class="form-label small text-secondary">نام سرور</label><input type="text" id="c_name" class="form-control" required></div>
@@ -116,10 +118,43 @@
           <h5 class="card-title mb-3"><i class="bi bi-list-task me-2"></i>لیست کانفیگ‌ها</h5>
           <div class="table-responsive">
             <table class="table align-middle">
-              <thead><tr class="text-secondary border-bottom"><th>پرچم</th><th>نام سرور</th><th>لینک کانفیگ</th><th>وضعیت</th><th>عملیات</th></tr></thead>
-              <tbody id="configsTableBody"><tr><td colspan="5" class="text-center py-4 text-secondary">در حال دریافت...</td></tr></tbody>
+              <thead><tr class="text-secondary border-bottom"><th>پرچم</th><th>نام سرور</th><th>لینک کانفیگ</th><th>منبع</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+              <tbody id="configsTableBody"><tr><td colspan="6" class="text-center py-4 text-secondary">در حال دریافت...</td></tr></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- تب سابسکریپشن خودکار -->
+      <div class="tab-pane fade" id="pills-sub">
+        <div class="card p-4 mb-4">
+          <h5 class="card-title mb-3"><i class="bi bi-link-45deg me-2"></i>تنظیمات لینک سابسکریپشن و همگام‌سازی</h5>
+          <form id="subForm" onsubmit="handleSaveSubSettings(event)">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="s_enabled">
+              <label class="form-check-label text-white" for="s_enabled">فعال‌سازی دریافت خودکار از لینک سابسکریپشن</label>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-8">
+                <label class="form-label small text-secondary">لینک سابسکریپشن (Subscription URL)</label>
+                <input type="url" id="s_url" class="form-control" placeholder="https://example.com/sub/..." required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small text-secondary">زمان بروزرسانی خودکار (دقیقه)</label>
+                <input type="number" id="s_interval" class="form-control" value="2" min="1" required>
+              </div>
+              <div class="col-12 d-flex justify-content-between align-items-center mt-4">
+                <div>
+                  <span id="subSyncStatus" class="badge bg-secondary">وضعیت همگام‌سازی: در انتظار...</span>
+                  <small id="lastSyncTime" class="text-secondary ms-2"></small>
+                </div>
+                <div>
+                  <button type="button" class="btn btn-outline-info me-2" onclick="syncSubscriptionNow()"><i class="bi bi-arrow-repeat me-1"></i>بروزرسانی دستی همین حالا</button>
+                  <button type="submit" class="btn btn-primary px-4">ذخیره تنظیمات</button>
+                </div>
+              </div>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -153,37 +188,33 @@
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- اسکریپت‌های تقویم شمسی -->
   <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
   <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 
   <script>
     const FIREBASE_URL = "https://pane-dcc9a-default-rtdb.firebaseio.com/";
     let selectedExpireTimestamp = null;
+    let cronIntervalId = null;
 
-    $(document).ready(function() {
-      // راه اندازی تقویم شمسی همراه با انتخاب ساعت و دقیقه
-      $("#u_expire_date").pDatepicker({
+    $(document).ready(function() {$("#u_expire_date").pDatepicker({
         format: 'YYYY/MM/DD HH:mm',
-        timePicker: {
-          enabled: true,
-          meridiem: { enabled: false }
-        },
+        timePicker: { enabled: true, meridiem: { enabled: false } },
         autoClose: true,
-        onSelect: function(unix) {
-          selectedExpireTimestamp = unix;
-        }
+        onSelect: function(unix) { selectedExpireTimestamp = unix; }
       });
 
       loadAllData();
+      initCronJob();
     });
 
     function loadAllData() {
       fetchUsers();
       fetchConfigs();
       fetchAnnouncement();
+      fetchSubSettings();
     }
 
+    // --- مدیریت کاربران ---
     async function fetchUsers() {
       const tbody = document.getElementById('usersTableBody');
       try {
@@ -222,11 +253,7 @@
 
     async function handleCreateUser(e) {
       e.preventDefault();
-      if (!selectedExpireTimestamp) {
-        alert('لطفاً تاریخ انقضا را انتخاب کنید.');
-        return;
-      }
-
+      if (!selectedExpireTimestamp) { alert('لطفاً تاریخ انقضا را انتخاب کنید.'); return; }
       const userId = 'user_' + Date.now();
       const userData = {
         username: document.getElementById('u_username').value.trim(),
@@ -237,7 +264,6 @@
         used_bytes: 0,
         created_at: new Date().toISOString()
       };
-
       await fetch(`${FIREBASE_URL}users/${userId}.json`, { method: 'PUT', body: JSON.stringify(userData) });
       document.getElementById('addUserForm').reset();
       selectedExpireTimestamp = null;
@@ -256,20 +282,23 @@
       }
     }
 
-    // --- مدیریت کانفیگ‌ها و اعلان‌ها ---
+    // --- مدیریت کانفیگ‌ها ---
     async function fetchConfigs() {
       const tbody = document.getElementById('configsTableBody');
       try {
         const res = await fetch(`${FIREBASE_URL}configs.json`);
         const data = await res.json();
-        if (!data) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-secondary py-4">هیچ کانفیگی یافت نشد.</td></tr>'; return; }
+        if (!data) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-secondary py-4">هیچ کانفیگی یافت نشد.</td></tr>'; return; }
         let html = '';
         Object.keys(data).forEach(id => {
           const config = data[id];
           if (!config) return;
+          const isSub = config.source === 'subscription';
           html += `<tr class="border-bottom border-secondary">
-            <td class="fs-4">${config.flag || '🌐'}</td><td class="fw-bold">${config.name}</td>
+            <td class="fs-4">${config.flag || '🌐'}</td>
+            <td class="fw-bold">${config.name}</td>
             <td><small class="text-secondary text-break">${config.config}</small></td>
+            <td><span class="badge ${isSub ? 'bg-info text-dark' : 'bg-secondary'}">${isSub ? 'سابسکریپشن' : 'دستی'}</span></td>
             <td><span class="badge ${config.active ? 'bg-success' : 'bg-secondary'}">${config.active ? 'فعال' : 'غیرفعال'}</span></td>
             <td>
               <button class="btn btn-sm btn-outline-warning me-1" onclick="toggleConfigStatus('${id}', ${!config.active})"><i class="bi bi-power"></i></button>
@@ -278,7 +307,7 @@
           </tr>`;
         });
         tbody.innerHTML = html;
-      } catch (err) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">خطا در دریافت!</td></tr>'; }
+      } catch (err) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">خطا در دریافت!</td></tr>'; }
     }
 
     async function handleCreateConfig(e) {
@@ -289,6 +318,7 @@
         name: document.getElementById('c_name').value.trim(),
         flag: document.getElementById('c_flag').value.trim(),
         config: document.getElementById('c_config').value.trim(),
+        source: 'manual',
         active: true
       };
       await fetch(`${FIREBASE_URL}configs/${configId}.json`, { method: 'PUT', body: JSON.stringify(configData) });
@@ -308,6 +338,145 @@
       }
     }
 
+    // --- مدیریت سابسکریپشن و کرون‌جاب ---
+    async function fetchSubSettings() {
+      try {
+        const res = await fetch(`${FIREBASE_URL}subscription_settings.json`);
+        const data = await res.json();
+        if (data) {
+          document.getElementById('s_enabled').checked = data.enabled || false;
+          document.getElementById('s_url').value = data.url || '';
+          document.getElementById('s_interval').value = data.interval_minutes || 2;
+          if (data.last_sync) {
+            document.getElementById('lastSyncTime').innerText = 'آخرین بروزرسانی: ' + new persianDate(new Date(data.last_sync)).format('YYYY/MM/DD HH:mm:ss');
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function handleSaveSubSettings(e) {
+      e.preventDefault();
+      const settings = {
+        enabled: document.getElementById('s_enabled').checked,
+        url: document.getElementById('s_url').value.trim(),
+        interval_minutes: parseInt(document.getElementById('s_interval').value) || 2,
+        last_sync: new Date().toISOString()
+      };
+      await fetch(`${FIREBASE_URL}subscription_settings.json`, { method: 'PUT', body: JSON.stringify(settings) });
+      alert('تنظیمات سابسکریپشن ذخیره شد.');
+      initCronJob();
+      if (settings.enabled) syncSubscriptionNow();
+    }
+
+    function parseConfigRemark(rawConfig) {
+      try {
+        if (rawConfig.includes('#')) {
+          const parts = rawConfig.split('#');
+          return decodeURIComponent(parts[1]);
+        }
+        if (rawConfig.startsWith('vmess://')) {
+          const base64Str = rawConfig.replace('vmess://', '');
+          const decoded = JSON.parse(atob(base64Str));
+          return decoded.ps || 'VMess Server';
+        }
+      } catch (_) {}
+      return 'Xray Server';
+    }
+
+    async function syncSubscriptionNow() {
+      const statusBadge = document.getElementById('subSyncStatus');
+      statusBadge.className = 'badge bg-warning text-dark';
+      statusBadge.innerText = 'در حال دریافت و بروزرسانی کانفیگ‌ها...';
+
+      try {
+        const res = await fetch(`${FIREBASE_URL}subscription_settings.json`);
+        const settings = await res.json();
+
+        if (!settings || !settings.enabled || !settings.url) {
+          statusBadge.className = 'badge bg-secondary';
+          statusBadge.innerText = 'سابسکریپشن غیرفعال یا لینک ثبت نشده است.';
+          return;
+        }
+
+        // دریافت محتوای سابسکریپشن (از طریق پروکسی CORS جهت جلوگیری از خطای مرورگر)
+        const corsProxy = "https://api.allorigins.win/raw?url=";
+        const subRes = await fetch(corsProxy + encodeURIComponent(settings.url));
+        if (!subRes.ok) throw new Error('خطا در دریافت لینک سابسکریپشن');
+
+        let rawText = await subRes.text();
+        rawText = rawText.trim();
+
+        // باز کردن رمزنگاری Base64 در صورت وجود
+        let decodedContent = rawText;
+        try {
+          decodedContent = atob(rawText);
+        } catch (_) {}
+
+        const configLines = decodedContent.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0 && (l.startsWith('vless://') || l.startsWith('vmess://') || l.startsWith('trojan://') || l.startsWith('ss://') || l.startsWith('shadowsocks://')));
+
+        if (configLines.length === 0) {
+          statusBadge.className = 'badge bg-danger';
+          statusBadge.innerText = 'هیچ کانفیگ معتبری در لینک پیدا نشد.';
+          return;
+        }
+
+        // دریافت کانفیگ‌های موجود
+        const currentRes = await fetch(`${FIREBASE_URL}configs.json`);
+        const currentData = (await currentRes.json()) || {};
+
+        // حذف کانفیگ‌های سابسکریپشن قبلی
+        for (const key in currentData) {
+          if (currentData[key] && currentData[key].source === 'subscription') {
+            await fetch(`${FIREBASE_URL}configs/${key}.json`, { method: 'DELETE' });
+          }
+        }
+
+        // افزودن کانفیگ‌های جدید با نام اصلی خودشان
+        for (let i = 0; i < configLines.length; i++) {
+          const configUrl = configLines[i];
+          const remarkName = parseConfigRemark(configUrl);
+          const configId = 'sub_config_' + Date.now() + '_' + i;
+
+          const configData = {
+            id: configId,
+            name: remarkName,
+            flag: '🌐',
+            config: configUrl,
+            source: 'subscription',
+            active: true
+          };
+
+          await fetch(`${FIREBASE_URL}configs/${configId}.json`, { method: 'PUT', body: JSON.stringify(configData) });
+        }
+
+        const nowIso = new Date().toISOString();
+        await fetch(`${FIREBASE_URL}subscription_settings/last_sync.json`, { method: 'PUT', body: JSON.stringify(nowIso) });
+
+        statusBadge.className = 'badge bg-success';
+        statusBadge.innerText = `همگام‌سازی موفق (${configLines.length} کانفیگ بردار شد)`;
+        document.getElementById('lastSyncTime').innerText = 'آخرین بروزرسانی: ' + new persianDate(new Date(nowIso)).format('YYYY/MM/DD HH:mm:ss');
+        fetchConfigs();
+
+      } catch (err) {
+        statusBadge.className = 'badge bg-danger';
+        statusBadge.innerText = 'خطا در همگام‌سازی: ' + err.message;
+      }
+    }
+
+    function initCronJob() {
+      if (cronIntervalId) clearInterval(cronIntervalId);
+
+      fetch(`${FIREBASE_URL}subscription_settings.json`).then(res => res.json()).then(data => {
+        if (data && data.enabled) {
+          const intervalMs = (data.interval_minutes || 2) * 60 * 1000;
+          cronIntervalId = setInterval(() => {
+            syncSubscriptionNow();
+          }, intervalMs);
+        }
+      });
+    }
+
+    // --- مدیریت اعلان‌ها ---
     async function fetchAnnouncement() {
       try {
         const res = await fetch(`${FIREBASE_URL}announcement.json`);
