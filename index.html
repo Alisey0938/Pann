@@ -383,26 +383,19 @@
       return 'Xray Server';
     }
 
-    // متد چندگانه برای دور زدن محدودیت CORS مرورگر
+    // دریافت اطلاعات سابسکریپشن از طریق Cloudflare Worker اختصاصی
     async function fetchWithCorsFallback(targetUrl) {
-      const proxies = [
-        "https://corsproxy.io/?",
-        "https://api.allorigins.win/raw?url=",
-        "https://thingproxy.freeboard.io/fetch/"
-      ];
+      const myWorkerUrl = "https://calm-snow-8cb3.alisey597.workers.dev/?url="; 
 
-      for (const proxy of proxies) {
-        try {
-          const fetchUrl = proxy + encodeURIComponent(targetUrl);
-          const response = await fetch(fetchUrl);
-          if (response.ok) {
-            return await response.text();
-          }
-        } catch (e) {
-          console.warn(`پروکسی ${proxy} پاسخ نداد، امتحان بعدی...`);
-        }
+      try {
+        const response = await fetch(myWorkerUrl + encodeURIComponent(targetUrl));
+        if (!response.ok) throw new Error('پاسخ نامعتبر از ورکر');
+        const text = await response.text();
+        if (text.startsWith("Error:")) throw new Error(text);
+        return text;
+      } catch (e) {
+        throw new Error("خطا در دریافت سابسکریپشن: " + e.message);
       }
-      throw new Error("امکان ارتباط با لینک سابسکریپشن وجود ندارد (خطای شبکه/CORS).");
     }
 
     async function syncSubscriptionNow() {
@@ -420,7 +413,7 @@
           return;
         }
 
-        // دریافت محتوا با فال‌بک پروکسی‌ها
+        // دریافت محتوا از طریق Worker کلودفلر
         let rawText = await fetchWithCorsFallback(settings.url);
         rawText = rawText.trim();
 
@@ -477,7 +470,7 @@
 
       } catch (err) {
         statusBadge.className = 'badge bg-danger';
-        statusBadge.innerText = 'خطا در همگام‌سازی: ' + err.message;
+        statusBadge.innerText = err.message;
       }
     }
 
