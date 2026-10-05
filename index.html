@@ -338,7 +338,7 @@
       }
     }
 
-    // --- مدیریت سابسکریپشن و کرون‌جاب ---
+    // --- مدیریت سابسکریپشن و کرون‌‌جاب ---
     async function fetchSubSettings() {
       try {
         const res = await fetch(`${FIREBASE_URL}subscription_settings.json`);
@@ -383,6 +383,28 @@
       return 'Xray Server';
     }
 
+    // متد چندگانه برای دور زدن محدودیت CORS مرورگر
+    async function fetchWithCorsFallback(targetUrl) {
+      const proxies = [
+        "https://corsproxy.io/?",
+        "https://api.allorigins.win/raw?url=",
+        "https://thingproxy.freeboard.io/fetch/"
+      ];
+
+      for (const proxy of proxies) {
+        try {
+          const fetchUrl = proxy + encodeURIComponent(targetUrl);
+          const response = await fetch(fetchUrl);
+          if (response.ok) {
+            return await response.text();
+          }
+        } catch (e) {
+          console.warn(`پروکسی ${proxy} پاسخ نداد، امتحان بعدی...`);
+        }
+      }
+      throw new Error("امکان ارتباط با لینک سابسکریپشن وجود ندارد (خطای شبکه/CORS).");
+    }
+
     async function syncSubscriptionNow() {
       const statusBadge = document.getElementById('subSyncStatus');
       statusBadge.className = 'badge bg-warning text-dark';
@@ -398,15 +420,11 @@
           return;
         }
 
-        // دریافت محتوای سابسکریپشن (از طریق پروکسی CORS جهت جلوگیری از خطای مرورگر)
-        const corsProxy = "https://api.allorigins.win/raw?url=";
-        const subRes = await fetch(corsProxy + encodeURIComponent(settings.url));
-        if (!subRes.ok) throw new Error('خطا در دریافت لینک سابسکریپشن');
-
-        let rawText = await subRes.text();
+        // دریافت محتوا با فال‌بک پروکسی‌ها
+        let rawText = await fetchWithCorsFallback(settings.url);
         rawText = rawText.trim();
 
-        // باز کردن رمزنگاری Base64 در صورت وجود
+        // رمزگشایی Base64 در صورت وجود
         let decodedContent = rawText;
         try {
           decodedContent = atob(rawText);
@@ -431,7 +449,7 @@
           }
         }
 
-        // افزودن کانفیگ‌های جدید با نام اصلی خودشان
+        // افزودن کانفیگ‌های جدید
         for (let i = 0; i < configLines.length; i++) {
           const configUrl = configLines[i];
           const remarkName = parseConfigRemark(configUrl);
@@ -453,7 +471,7 @@
         await fetch(`${FIREBASE_URL}subscription_settings/last_sync.json`, { method: 'PUT', body: JSON.stringify(nowIso) });
 
         statusBadge.className = 'badge bg-success';
-        statusBadge.innerText = `همگام‌سازی موفق (${configLines.length} کانفیگ بردار شد)`;
+        statusBadge.innerText = `همگام‌سازی موفق (${configLines.length} کانفیگ دریافت شد)`;
         document.getElementById('lastSyncTime').innerText = 'آخرین بروزرسانی: ' + new persianDate(new Date(nowIso)).format('YYYY/MM/DD HH:mm:ss');
         fetchConfigs();
 
